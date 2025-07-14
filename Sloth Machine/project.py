@@ -15,9 +15,8 @@ def deposit():
             except:
                 print("Type in a number")
 
-
-
     return amount
 
 
-deposit()
+def main():
+    balance = deposit(2)

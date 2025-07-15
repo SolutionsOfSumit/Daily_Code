@@ -20,3 +20,5 @@ def deposit():
 
 def main():
     balance = deposit(2)
+
+    sumit = main

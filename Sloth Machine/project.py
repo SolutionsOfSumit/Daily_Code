@@ -17,8 +17,13 @@ def deposit():
 
     return amount
 
+def get_number_lines():
+    
+
 
 def main():
     balance = deposit(2)
 
-    sumit = main
+
+main()
+    

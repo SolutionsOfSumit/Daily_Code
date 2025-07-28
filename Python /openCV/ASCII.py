@@ -17,7 +17,7 @@ def frame_to_ascii(frame, width=80):
         ascii_frame += ascii_row + "\n"
     return ascii_frame
 
-cap = cv2.VideoCapture("/home/sumit/Downloads/videoplayback.mp4")
+cap = cv2.VideoCapture("video.mp4")
 
 while cap.isOpened():
     ret, frame = cap.read()

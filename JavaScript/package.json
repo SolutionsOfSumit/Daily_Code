@@ -1,0 +1,14 @@
+{
+  "name": "daily-javascript",
+  "version": "1.0.0",
+  "description": "Nothing ",
+  "main": "project.js",
+  "scripts": {
+    "test": "test"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "prompt-sync": "^4.2.0"
+  }
+}

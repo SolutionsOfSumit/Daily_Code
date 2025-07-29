@@ -27,6 +27,6 @@ while cap.isOpened():
     ascii_img = frame_to_ascii(frame)
     os.system("clear")  # clear terminal
     print(ascii_img)
-    time.sleep(1/30)  # simulate 30 FPS
+    time.sleep(1/60)  # simulate 30 FPS
 
 cap.release()

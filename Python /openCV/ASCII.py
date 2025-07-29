@@ -2,7 +2,7 @@ import cv2
 import os
 import time
 
-ASCII_CHARS = "@%#*+=-:. "
+ASCII_CHARS = "@_%#*+=-:. "
 
 def frame_to_ascii(frame, width=80):
     frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -13,7 +13,7 @@ def frame_to_ascii(frame, width=80):
 
     ascii_frame = ""
     for row in frame:
-        ascii_row = "".join(ASCII_CHARS[pixel // 25] for pixel in row)
+        ascii_row = "".join(ASCII_CHARS[pixel // 100] for pixel in row)
         ascii_frame += ascii_row + "\n"
     return ascii_frame
 

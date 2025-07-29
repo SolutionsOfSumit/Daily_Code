@@ -1,1 +1,1 @@
-Valid(n)
+print(cordinates)

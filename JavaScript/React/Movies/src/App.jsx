@@ -4,22 +4,18 @@ import viteLogo from '/vite.svg'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
 
   return (
     <>
-    <Text text="Sumit" />
-    <Text text="Sumit" />
+    <Text text = "Sumit" />
+    <Text text = "Is a Monster" /> 
     </>
   )
 }
 
 function Text({text}) {
-  return (
-  <div>
-    <p>My Name is</p>
-    <p>{text} is a Monster</p>
+  return <div>
+    <p>{text}</p>
   </div>
-  )
 }
 export default App

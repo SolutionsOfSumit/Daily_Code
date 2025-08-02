@@ -1,21 +1,15 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
 import './App.css'
+import MovieCard from './Components/MovieCard'
 
 function App() {
+  const movieNumber = 1;
 
   return (
+
     <>
-    <Text text = "Sumit" />
-    <Text text = "Is a Monster" /> 
-    </>
+    {movieNumber === 1 && <MovieCard movie = {{ title: "Joes Film", genre: "Action"}} />}
+    </> 
   )
 }
 
-function Text({text}) {
-  return <div>
-    <p>{text}</p>
-  </div>
-}
 export default App

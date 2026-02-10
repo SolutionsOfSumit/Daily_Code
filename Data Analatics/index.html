@@ -1,0 +1,1053 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IT Company Project Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  <div class="container mx-auto p-4">
+    <!-- Main Content: List and Details -->
+    <div class="flex mb-8">
+      <!-- Left Panel: Project List -->
+      <div class="w-1/3 bg-white rounded-lg shadow-md p-4 overflow-y-auto max-h-[600px]">
+        <h2 class="text-xl font-bold mb-4">Projects</h2>
+        <ul id="projectList" class="space-y-2"></ul>
+      </div>
+
+      <!-- Right Panel: Project Details -->
+      <div class="w-2/3 ml-4 flex flex-col">
+        <!-- Top Section: General Info -->
+        <div class="bg-white rounded-lg shadow-md p-4 mb-4">
+          <h2 class="text-xl font-bold mb-4">Project Information</h2>
+          <div id="projectInfo" class="text-gray-700">
+            <p><strong>Industry:</strong> <span id="industry">Select a project</span></p>
+            <p><strong>Project Name:</strong> <span id="projectName">-</span></p>
+            <p><strong>Service Type:</strong> <span id="serviceType">-</span></p>
+            <p><strong>Start Date:</strong> <span id="startDate">-</span></p>
+            <p><strong>End Date:</strong> <span id="endDate">-</span></p>
+          </div>
+        </div>
+
+        <!-- Bottom Section: Metrics -->
+        <div class="bg-white rounded-lg shadow-md p-4">
+          <h2 class="text-xl font-bold mb-4">Project Metrics</h2>
+          <div id="projectMetrics" class="text-gray-700 grid grid-cols-2 gap-4">
+            <p><strong>Project Value (₹):</strong> <span id="projectValue">-</span></p>
+            <p><strong>Team Size:</strong> <span id="teamSize">-</span></p>
+            <p><strong>Status:</strong> <span id="status">-</span></p>
+            <p><strong>Client Rating:</strong> <span id="clientRating">-</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Charts Section -->
+    <div class="bg-white rounded-lg shadow-md p-4">
+      <h2 class="text-xl font-bold mb-4">Summary Charts</h2>
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <h3 class="text-lg font-semibold mb-2">Project Status</h3>
+          <canvas id="statusChart" height="200"></canvas>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold mb-2">Client Rating Distribution</h3>
+          <canvas id="ratingChart" height="200"></canvas>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold mb-2">Team Size Distribution</h3>
+          <canvas id="teamSizeChart" height="200"></canvas>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold mb-2">Project Value by Industry (Total ₹)</h3>
+          <canvas id="valueChart" height="200"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const projects = [
+  {
+    "Project ID": "TN101",
+    "Client": "SkyBridge IT",
+    "Country": "Singapore",
+    "Industry": "Aerospace",
+    "Project Name": "Mobile App Development Project",
+    "Service Type": "Mobile App Development",
+    "Start Date": "2024-01-27",
+    "End Date": "2024-10-06",
+    "Project Value": 6835416,
+    "Team Size": 16,
+    "Status": "Completed",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN102",
+    "Client": "CyberGuard Tech",
+    "Country": "Australia",
+    "Industry": "Logistics",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2024-05-12",
+    "End Date": "2024-10-30",
+    "Project Value": 14801364,
+    "Team Size": 10,
+    "Status": "In Progress",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN103",
+    "Client": "CyberGuard Tech",
+    "Country": "India",
+    "Industry": "Retail",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2025-04-07",
+    "End Date": "2026-02-18",
+    "Project Value": 11120878,
+    "Team Size": 17,
+    "Status": "In Progress",
+    "Client Rating": 5.0
+  },
+  {
+    "Project ID": "TN104",
+    "Client": "FinEdge Analytics",
+    "Country": "India",
+    "Industry": "Education",
+    "Project Name": "Mobile App Development Project",
+    "Service Type": "Mobile App Development",
+    "Start Date": "2024-03-17",
+    "End Date": "2024-08-17",
+    "Project Value": 12241019,
+    "Team Size": 19,
+    "Status": "In Progress",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN105",
+    "Client": "AeroTech Innovations",
+    "Country": "Australia",
+    "Industry": "Food & Beverages",
+    "Project Name": "Cloud Solutions Project",
+    "Service Type": "Cloud Solutions",
+    "Start Date": "2023-02-06",
+    "End Date": "2023-07-29",
+    "Project Value": 12559807,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.4
+  },
+  {
+    "Project ID": "TN106",
+    "Client": "OceanLink Logistics",
+    "Country": "France",
+    "Industry": "Insurance",
+    "Project Name": "IoT & Data Analytics Project",
+    "Service Type": "IoT & Data Analytics",
+    "Start Date": "2024-05-24",
+    "End Date": "2025-04-01",
+    "Project Value": 6401755,
+    "Team Size": 19,
+    "Status": "In Progress",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN107",
+    "Client": "BrightFuture AI",
+    "Country": "UAE",
+    "Industry": "Retail",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2024-02-15",
+    "End Date": "2024-09-30",
+    "Project Value": 12879622,
+    "Team Size": 10,
+    "Status": "In Progress",
+    "Client Rating": 4.4
+  },
+  {
+    "Project ID": "TN108",
+    "Client": "HealthNet Global",
+    "Country": "Germany",
+    "Industry": "Education",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2023-07-24",
+    "End Date": "2024-01-25",
+    "Project Value": 11420427,
+    "Team Size": 8,
+    "Status": "Completed",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN109",
+    "Client": "SmartBuild Infra",
+    "Country": "Australia",
+    "Industry": "Insurance",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2025-01-24",
+    "End Date": "2025-12-17",
+    "Project Value": 13294498,
+    "Team Size": 17,
+    "Status": "Completed",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN110",
+    "Client": "CloudPoint Inc.",
+    "Country": "UAE",
+    "Industry": "Aerospace",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2023-08-09",
+    "End Date": "2024-04-21",
+    "Project Value": 9581992,
+    "Team Size": 10,
+    "Status": "In Progress",
+    "Client Rating": 4.8
+  },
+  {
+    "Project ID": "TN111",
+    "Client": "GreenCity Developers",
+    "Country": "Germany",
+    "Industry": "Education",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2025-02-15",
+    "End Date": "2025-08-27",
+    "Project Value": 11707120,
+    "Team Size": 16,
+    "Status": "Completed",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN112",
+    "Client": "FinEdge Analytics",
+    "Country": "Australia",
+    "Industry": "Retail",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2025-02-07",
+    "End Date": "2025-06-16",
+    "Project Value": 9038091,
+    "Team Size": 5,
+    "Status": "Completed",
+    "Client Rating": 4.0
+  },
+  {
+    "Project ID": "TN113",
+    "Client": "UrbanGrid Energy",
+    "Country": "Canada",
+    "Industry": "Aerospace",
+    "Project Name": "Software Development Project",
+    "Service Type": "Software Development",
+    "Start Date": "2023-11-25",
+    "End Date": "2024-08-06",
+    "Project Value": 10291486,
+    "Team Size": 7,
+    "Status": "In Progress",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN114",
+    "Client": "MediCare Plus",
+    "Country": "UAE",
+    "Industry": "Food & Beverages",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2023-03-31",
+    "End Date": "2023-09-01",
+    "Project Value": 12033776,
+    "Team Size": 17,
+    "Status": "Completed",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN115",
+    "Client": "UrbanGrid Energy",
+    "Country": "UK",
+    "Industry": "Education",
+    "Project Name": "IoT & Data Analytics Project",
+    "Service Type": "IoT & Data Analytics",
+    "Start Date": "2023-05-03",
+    "End Date": "2023-12-27",
+    "Project Value": 10928227,
+    "Team Size": 11,
+    "Status": "Completed",
+    "Client Rating": 4.4
+  },
+  {
+    "Project ID": "TN116",
+    "Client": "AeroTech Innovations",
+    "Country": "France",
+    "Industry": "Banking",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2024-03-01",
+    "End Date": "2024-06-08",
+    "Project Value": 13197470,
+    "Team Size": 9,
+    "Status": "Completed",
+    "Client Rating": 4.8
+  },
+  {
+    "Project ID": "TN117",
+    "Client": "SmartBuild Infra",
+    "Country": "UAE",
+    "Industry": "Education",
+    "Project Name": "IoT & Data Analytics Project",
+    "Service Type": "IoT & Data Analytics",
+    "Start Date": "2024-02-26",
+    "End Date": "2024-12-23",
+    "Project Value": 5267042,
+    "Team Size": 16,
+    "Status": "Completed",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN118",
+    "Client": "HealthNet Global",
+    "Country": "Australia",
+    "Industry": "Banking",
+    "Project Name": "IoT & Data Analytics Project",
+    "Service Type": "IoT & Data Analytics",
+    "Start Date": "2023-02-22",
+    "End Date": "2023-12-24",
+    "Project Value": 8039312,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.0
+  },
+  {
+    "Project ID": "TN119",
+    "Client": "SmartBuild Infra",
+    "Country": "India",
+    "Industry": "Food & Beverages",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2023-09-08",
+    "End Date": "2024-09-02",
+    "Project Value": 8529228,
+    "Team Size": 10,
+    "Status": "Completed",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN120",
+    "Client": "MediCare Plus",
+    "Country": "Japan",
+    "Industry": "Education",
+    "Project Name": "AI & ML Solutions Project",
+    "Service Type": "AI & ML Solutions",
+    "Start Date": "2024-03-29",
+    "End Date": "2024-10-10",
+    "Project Value": 11467287,
+    "Team Size": 14,
+    "Status": "Completed",
+    "Client Rating": 4.8
+  },
+  {
+    "Project ID": "TN121",
+    "Client": "AeroTech Innovations",
+    "Country": "Canada",
+    "Industry": "Real Estate",
+    "Project Name": "Mobile App Development Project",
+    "Service Type": "Mobile App Development",
+    "Start Date": "2024-12-25",
+    "End Date": "2025-08-02",
+    "Project Value": 12949861,
+    "Team Size": 15,
+    "Status": "Completed",
+    "Client Rating": 4.1
+  },
+  {
+    "Project ID": "TN122",
+    "Client": "FinEdge Analytics",
+    "Country": "Japan",
+    "Industry": "Retail",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2024-05-03",
+    "End Date": "2025-01-09",
+    "Project Value": 12189524,
+    "Team Size": 6,
+    "Status": "In Progress",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN123",
+    "Client": "AgroFresh Foods",
+    "Country": "UAE",
+    "Industry": "Banking",
+    "Project Name": "AI & ML Solutions Project",
+    "Service Type": "AI & ML Solutions",
+    "Start Date": "2023-01-28",
+    "End Date": "2023-10-08",
+    "Project Value": 6143561,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN124",
+    "Client": "FinSmart Bank",
+    "Country": "Singapore",
+    "Industry": "Aerospace",
+    "Project Name": "Mobile App Development Project",
+    "Service Type": "Mobile App Development",
+    "Start Date": "2024-06-22",
+    "End Date": "2024-11-11",
+    "Project Value": 13152230,
+    "Team Size": 15,
+    "Status": "Completed",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN125",
+    "Client": "CloudPoint Inc.",
+    "Country": "Singapore",
+    "Industry": "Food & Beverages",
+    "Project Name": "Cloud Solutions Project",
+    "Service Type": "Cloud Solutions",
+    "Start Date": "2023-04-26",
+    "End Date": "2023-09-03",
+    "Project Value": 8351431,
+    "Team Size": 15,
+    "Status": "Completed",
+    "Client Rating": 4.3
+  },
+  {
+    "Project ID": "TN126",
+    "Client": "FinEdge Analytics",
+    "Country": "Japan",
+    "Industry": "Aerospace",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2024-07-07",
+    "End Date": "2025-02-21",
+    "Project Value": 14675733,
+    "Team Size": 12,
+    "Status": "Completed",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN127",
+    "Client": "NextGen Systems",
+    "Country": "India",
+    "Industry": "Healthcare",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2023-08-08",
+    "End Date": "2024-03-25",
+    "Project Value": 14603980,
+    "Team Size": 11,
+    "Status": "Completed",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN128",
+    "Client": "BrightFuture AI",
+    "Country": "India",
+    "Industry": "Real Estate",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2023-04-14",
+    "End Date": "2023-12-14",
+    "Project Value": 6699025,
+    "Team Size": 20,
+    "Status": "In Progress",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN129",
+    "Client": "SmartBuild Infra",
+    "Country": "India",
+    "Industry": "Healthcare",
+    "Project Name": "Web & Mobile Solutions Project",
+    "Service Type": "Web & Mobile Solutions",
+    "Start Date": "2024-06-24",
+    "End Date": "2025-02-09",
+    "Project Value": 6100401,
+    "Team Size": 13,
+    "Status": "Completed",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN130",
+    "Client": "AgroFresh Foods",
+    "Country": "USA",
+    "Industry": "Insurance",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2024-09-19",
+    "End Date": "2025-09-07",
+    "Project Value": 11165295,
+    "Team Size": 9,
+    "Status": "Completed",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN131",
+    "Client": "BrightFuture AI",
+    "Country": "Japan",
+    "Industry": "Healthcare",
+    "Project Name": "Software Development Project",
+    "Service Type": "Software Development",
+    "Start Date": "2024-07-18",
+    "End Date": "2024-12-30",
+    "Project Value": 14184456,
+    "Team Size": 12,
+    "Status": "In Progress",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN132",
+    "Client": "NextGen Systems",
+    "Country": "USA",
+    "Industry": "Insurance",
+    "Project Name": "Cloud Solutions Project",
+    "Service Type": "Cloud Solutions",
+    "Start Date": "2023-03-04",
+    "End Date": "2023-11-12",
+    "Project Value": 14074173,
+    "Team Size": 8,
+    "Status": "In Progress",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN133",
+    "Client": "CyberGuard Tech",
+    "Country": "Singapore",
+    "Industry": "Real Estate",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2023-07-22",
+    "End Date": "2024-04-23",
+    "Project Value": 9572264,
+    "Team Size": 12,
+    "Status": "In Progress",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN134",
+    "Client": "EduWorld Online",
+    "Country": "UK",
+    "Industry": "Insurance",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2023-08-17",
+    "End Date": "2024-04-13",
+    "Project Value": 5985813,
+    "Team Size": 8,
+    "Status": "Completed",
+    "Client Rating": 4.1
+  },
+  {
+    "Project ID": "TN135",
+    "Client": "OceanLink Logistics",
+    "Country": "Germany",
+    "Industry": "Food & Beverages",
+    "Project Name": "Cloud Solutions Project",
+    "Service Type": "Cloud Solutions",
+    "Start Date": "2023-09-18",
+    "End Date": "2024-08-02",
+    "Project Value": 9773833,
+    "Team Size": 18,
+    "Status": "Completed",
+    "Client Rating": 4.8
+  },
+  {
+    "Project ID": "TN136",
+    "Client": "SkyBridge IT",
+    "Country": "India",
+    "Industry": "Retail",
+    "Project Name": "Mobile App Development Project",
+    "Service Type": "Mobile App Development",
+    "Start Date": "2023-04-22",
+    "End Date": "2024-02-09",
+    "Project Value": 12121056,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.8
+  },
+  {
+    "Project ID": "TN137",
+    "Client": "SmartBuild Infra",
+    "Country": "France",
+    "Industry": "Insurance",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2024-06-26",
+    "End Date": "2025-05-27",
+    "Project Value": 6971613,
+    "Team Size": 11,
+    "Status": "In Progress",
+    "Client Rating": 4.8
+  },
+  {
+    "Project ID": "TN138",
+    "Client": "CloudPoint Inc.",
+    "Country": "Japan",
+    "Industry": "Banking",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2025-04-20",
+    "End Date": "2025-07-24",
+    "Project Value": 5854593,
+    "Team Size": 12,
+    "Status": "Completed",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN139",
+    "Client": "MediLink Health",
+    "Country": "Japan",
+    "Industry": "Banking",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2024-04-21",
+    "End Date": "2024-12-12",
+    "Project Value": 13905093,
+    "Team Size": 6,
+    "Status": "Completed",
+    "Client Rating": 5.0
+  },
+  {
+    "Project ID": "TN140",
+    "Client": "CyberGuard Tech",
+    "Country": "Japan",
+    "Industry": "Food & Beverages",
+    "Project Name": "AI & ML Solutions Project",
+    "Service Type": "AI & ML Solutions",
+    "Start Date": "2025-05-07",
+    "End Date": "2026-03-25",
+    "Project Value": 9492382,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN141",
+    "Client": "MediCare Plus",
+    "Country": "France",
+    "Industry": "Healthcare",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2025-04-30",
+    "End Date": "2026-03-10",
+    "Project Value": 5708943,
+    "Team Size": 20,
+    "Status": "In Progress",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN142",
+    "Client": "UrbanGrid Energy",
+    "Country": "France",
+    "Industry": "Logistics",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2025-04-16",
+    "End Date": "2025-08-10",
+    "Project Value": 14956140,
+    "Team Size": 11,
+    "Status": "In Progress",
+    "Client Rating": 4.1
+  },
+  {
+    "Project ID": "TN143",
+    "Client": "SkyBridge IT",
+    "Country": "Australia",
+    "Industry": "Healthcare",
+    "Project Name": "AI & ML Solutions Project",
+    "Service Type": "AI & ML Solutions",
+    "Start Date": "2025-05-24",
+    "End Date": "2025-09-05",
+    "Project Value": 9411760,
+    "Team Size": 7,
+    "Status": "In Progress",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN144",
+    "Client": "CloudPoint Inc.",
+    "Country": "Japan",
+    "Industry": "Retail",
+    "Project Name": "Software Development Project",
+    "Service Type": "Software Development",
+    "Start Date": "2025-06-24",
+    "End Date": "2026-05-17",
+    "Project Value": 11070083,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.1
+  },
+  {
+    "Project ID": "TN145",
+    "Client": "NextGen Systems",
+    "Country": "UAE",
+    "Industry": "Energy",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2024-01-09",
+    "End Date": "2024-05-23",
+    "Project Value": 14336324,
+    "Team Size": 17,
+    "Status": "In Progress",
+    "Client Rating": 4.5
+  },
+  {
+    "Project ID": "TN146",
+    "Client": "BrightFuture AI",
+    "Country": "Singapore",
+    "Industry": "Banking",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2023-07-06",
+    "End Date": "2024-03-29",
+    "Project Value": 10079552,
+    "Team Size": 9,
+    "Status": "In Progress",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN147",
+    "Client": "SkyBridge IT",
+    "Country": "India",
+    "Industry": "Healthcare",
+    "Project Name": "SaaS Development Project",
+    "Service Type": "SaaS Development",
+    "Start Date": "2025-02-06",
+    "End Date": "2025-05-10",
+    "Project Value": 8125098,
+    "Team Size": 6,
+    "Status": "Completed",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN148",
+    "Client": "GlobalMart Corp.",
+    "Country": "India",
+    "Industry": "Banking",
+    "Project Name": "Software Development Project",
+    "Service Type": "Software Development",
+    "Start Date": "2023-11-14",
+    "End Date": "2024-10-15",
+    "Project Value": 7476803,
+    "Team Size": 7,
+    "Status": "Completed",
+    "Client Rating": 4.3
+  },
+  {
+    "Project ID": "TN149",
+    "Client": "GreenCity Developers",
+    "Country": "USA",
+    "Industry": "Aerospace",
+    "Project Name": "Web & Mobile Solutions Project",
+    "Service Type": "Web & Mobile Solutions",
+    "Start Date": "2023-06-03",
+    "End Date": "2024-01-12",
+    "Project Value": 11728533,
+    "Team Size": 19,
+    "Status": "In Progress",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN150",
+    "Client": "FinEdge Analytics",
+    "Country": "Australia",
+    "Industry": "Energy",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2024-03-09",
+    "End Date": "2024-07-24",
+    "Project Value": 9345911,
+    "Team Size": 13,
+    "Status": "Completed",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN151",
+    "Client": "MediLink Health",
+    "Country": "Japan",
+    "Industry": "Aerospace",
+    "Project Name": "IoT & Data Analytics Project",
+    "Service Type": "IoT & Data Analytics",
+    "Start Date": "2024-09-07",
+    "End Date": "2025-03-26",
+    "Project Value": 12689153,
+    "Team Size": 7,
+    "Status": "In Progress",
+    "Client Rating": 4.6
+  },
+  {
+    "Project ID": "TN152",
+    "Client": "BrightFuture AI",
+    "Country": "India",
+    "Industry": "Real Estate",
+    "Project Name": "AI & ML Solutions Project",
+    "Service Type": "AI & ML Solutions",
+    "Start Date": "2025-05-06",
+    "End Date": "2025-09-21",
+    "Project Value": 9756609,
+    "Team Size": 6,
+    "Status": "In Progress",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN153",
+    "Client": "HealthNet Global",
+    "Country": "USA",
+    "Industry": "Healthcare",
+    "Project Name": "Web & Mobile Solutions Project",
+    "Service Type": "Web & Mobile Solutions",
+    "Start Date": "2024-01-13",
+    "End Date": "2024-06-04",
+    "Project Value": 12249253,
+    "Team Size": 13,
+    "Status": "In Progress",
+    "Client Rating": 4.4
+  },
+  {
+    "Project ID": "TN154",
+    "Client": "SmartBuild Infra",
+    "Country": "Australia",
+    "Industry": "Education",
+    "Project Name": "Web & Mobile Solutions Project",
+    "Service Type": "Web & Mobile Solutions",
+    "Start Date": "2024-10-14",
+    "End Date": "2025-02-05",
+    "Project Value": 14724621,
+    "Team Size": 13,
+    "Status": "Completed",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN155",
+    "Client": "BrightFuture AI",
+    "Country": "UAE",
+    "Industry": "Retail",
+    "Project Name": "Business Intelligence Project",
+    "Service Type": "Business Intelligence",
+    "Start Date": "2024-03-01",
+    "End Date": "2024-07-19",
+    "Project Value": 13842610,
+    "Team Size": 7,
+    "Status": "In Progress",
+    "Client Rating": 4.2
+  },
+  {
+    "Project ID": "TN156",
+    "Client": "BrightFuture AI",
+    "Country": "UAE",
+    "Industry": "Healthcare",
+    "Project Name": "Cloud Solutions Project",
+    "Service Type": "Cloud Solutions",
+    "Start Date": "2025-04-19",
+    "End Date": "2025-08-17",
+    "Project Value": 7894839,
+    "Team Size": 10,
+    "Status": "In Progress",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN157",
+    "Client": "AeroTech Innovations",
+    "Country": "Australia",
+    "Industry": "Healthcare",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2023-02-11",
+    "End Date": "2023-06-06",
+    "Project Value": 12924033,
+    "Team Size": 7,
+    "Status": "Completed",
+    "Client Rating": 4.7
+  },
+  {
+    "Project ID": "TN158",
+    "Client": "UrbanGrid Energy",
+    "Country": "Germany",
+    "Industry": "Insurance",
+    "Project Name": "Cloud Solutions Project",
+    "Service Type": "Cloud Solutions",
+    "Start Date": "2023-06-24",
+    "End Date": "2023-12-19",
+    "Project Value": 6775319,
+    "Team Size": 12,
+    "Status": "Completed",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN159",
+    "Client": "GlobalMart Corp.",
+    "Country": "Singapore",
+    "Industry": "Healthcare",
+    "Project Name": "IoT & Cloud Integration Project",
+    "Service Type": "IoT & Cloud Integration",
+    "Start Date": "2024-09-06",
+    "End Date": "2025-03-08",
+    "Project Value": 8971842,
+    "Team Size": 7,
+    "Status": "In Progress",
+    "Client Rating": 4.9
+  },
+  {
+    "Project ID": "TN160",
+    "Client": "SmartBuild Infra",
+    "Country": "UAE",
+    "Industry": "Aerospace",
+    "Project Name": "Web Development Project",
+    "Service Type": "Web Development",
+    "Start Date": "2024-09-09",
+    "End Date": "2025-08-30",
+    "Project Value": 13836083,
+    "Team Size": 15,
+    "Status": "Completed",
+    "Client Rating": 4.7
+  }
+];
+
+    // Populate project list
+    const projectList = document.getElementById('projectList');
+    projects.forEach((project, index) => {
+      const li = document.createElement('li');
+      li.className = 'p-2 hover:bg-blue-100 cursor-pointer rounded flex justify-between';
+      li.innerHTML = `<span>${project.Client} (${project["Project ID"]})</span><span class="text-gray-500">${project.Country}</span>`;
+      li.onclick = () => showProjectInfo(index);
+      projectList.appendChild(li);
+    });
+
+    function showProjectInfo(index) {
+      const project = projects[index];
+      document.getElementById('industry').textContent = project.Industry;
+      document.getElementById('projectName').textContent = project["Project Name"];
+      document.getElementById('serviceType').textContent = project["Service Type"];
+      document.getElementById('startDate').textContent = project["Start Date"];
+      document.getElementById('endDate').textContent = project["End Date"];
+      document.getElementById('projectValue').textContent = project["Project Value"].toLocaleString();
+      document.getElementById('teamSize').textContent = project["Team Size"];
+      document.getElementById('status').textContent = project.Status;
+      document.getElementById('clientRating').textContent = project["Client Rating"];
+    }
+
+    // Compute data for charts
+
+    // Status Pie
+    const statusCount = projects.reduce((acc, p) => {
+      acc[p.Status] = (acc[p.Status] || 0) + 1;
+      return acc;
+    }, {});
+    new Chart(document.getElementById('statusChart'), {
+      type: 'pie',
+      data: {
+        labels: Object.keys(statusCount),
+        datasets: [{
+          data: Object.values(statusCount),
+          backgroundColor: ['#36A2EB', '#FF6384']
+        }]
+      },
+      options: { responsive: true }
+    });
+
+    // Rating Distribution Bar
+    const ratingBins = {};
+    projects.forEach(p => {
+      const bin = p["Client Rating"].toFixed(1);
+      ratingBins[bin] = (ratingBins[bin] || 0) + 1;
+    });
+    new Chart(document.getElementById('ratingChart'), {
+      type: 'bar',
+      data: {
+        labels: Object.keys(ratingBins).sort(),
+        datasets: [{
+          label: 'Count',
+          data: Object.values(ratingBins),
+          backgroundColor: '#36A2EB'
+        }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Team Size Distribution Bar
+    const teamSizeBins = {};
+    projects.forEach(p => {
+      const bin = p["Team Size"];
+      teamSizeBins[bin] = (teamSizeBins[bin] || 0) + 1;
+    });
+    new Chart(document.getElementById('teamSizeChart'), {
+      type: 'bar',
+      data: {
+        labels: Object.keys(teamSizeBins).sort((a,b)=>a-b),
+        datasets: [{
+          label: 'Count',
+          data: Object.values(teamSizeBins),
+          backgroundColor: '#FFCE56'
+        }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+
+    // Project Value by Industry Bar
+    const valueByIndustry = projects.reduce((acc, p) => {
+      acc[p.Industry] = (acc[p.Industry] || 0) + p["Project Value"];
+      return acc;
+    }, {});
+    new Chart(document.getElementById('valueChart'), {
+      type: 'bar',
+      data: {
+        labels: Object.keys(valueByIndustry),
+        datasets: [{
+          label: 'Total Value (₹)',
+          data: Object.values(valueByIndustry),
+          backgroundColor: '#4BC0C0'
+        }]
+      },
+      options: { responsive: true, scales: { y: { beginAtZero: true } } }
+    });
+  </script>
+</body>
+</html>

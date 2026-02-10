@@ -1,0 +1,616 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Client Project Comparison</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+        .chart-container { 
+            width: 100%; 
+            overflow-x: auto; 
+            max-width: 1200px; 
+            margin: auto; 
+            padding-bottom: 20px;
+        }
+        #myChart { 
+            height: 400px; 
+        }
+        select, input[type="text"] { 
+            margin: 10px 5px; 
+            display: inline-block; 
+            padding: 8px; 
+            width: 200px; 
+            font-size: 16px;
+        }
+        h1 { text-align: center; }
+        .controls { text-align: center; margin-bottom: 20px; }
+        .search-container input { 
+            border: 1px solid #ccc; 
+            border-radius: 4px; 
+        }
+    </style>
+</head>
+<body>
+    <h1>Client Comparison Dashboard</h1>
+    <div class="controls">
+        <input type="text" id="searchInput" placeholder="Search for a client..." oninput="searchClient()">
+        <select id="metric">
+            <option value="total_value">Project Value (Sum in ₹)</option>
+            <option value="avg_team">Team Size (Average)</option>
+            <option value="avg_rating">Client Rating (Average)</option>
+        </select>
+        <select id="numCompanies">
+            <option value="10">Show 10 Companies</option>
+            <option value="20">Show 20 Companies</option>
+            <option value="30">Show 30 Companies</option>
+            <option value="40">Show 40 Companies</option>
+            <option value="50">Show 50 Companies</option>
+            <option value="60" selected>Show All Companies (60)</option>
+        </select>
+    </div>
+    <div class="chart-container">
+        <canvas id="myChart"></canvas>
+    </div>
+    <script>
+        const clientData = {
+            "AeroTech Innovations": {
+                "total_value": 51631171, "avg_team": 11.0, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN105", "Country": "Australia", "Industry": "Food & Beverages", "Project Name": "Cloud Solutions Project", "Service Type": "Cloud Solutions", "Status": "In Progress", "Start Date": "2023-02-06", "End Date": "2023-07-29", "Value": 12907793},
+                    {"Project ID": "TN116", "Country": "France", "Industry": "Banking", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "Completed", "Start Date": "2024-03-01", "End Date": "2024-06-08", "Value": 12907793},
+                    {"Project ID": "TN121", "Country": "Canada", "Industry": "Real Estate", "Project Name": "Mobile App Development Project", "Service Type": "Mobile App Development", "Status": "Completed", "Start Date": "2024-12-25", "End Date": "2025-08-02", "Value": 12907793},
+                    {"Project ID": "TN157", "Country": "Australia", "Industry": "Healthcare", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2023-02-11", "End Date": "2023-06-06", "Value": 12907792}
+                ]
+            },
+            "AgroFresh Foods": {
+                "total_value": 17308856, "avg_team": 11.0, "avg_rating": 4.75,
+                "projects": [
+                    {"Project ID": "TN123", "Country": "UAE", "Industry": "Banking", "Project Name": "AI & ML Solutions Project", "Service Type": "AI & ML Solutions", "Status": "In Progress", "Start Date": "2023-01-28", "End Date": "2023-10-08", "Value": 8654428},
+                    {"Project ID": "TN130", "Country": "USA", "Industry": "Insurance", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2024-09-19", "End Date": "2025-09-07", "Value": 8654428}
+                ]
+            },
+            "BrightFuture AI": {
+                "total_value": 75336713, "avg_team": 10.57, "avg_rating": 4.51,
+                "projects": [
+                    {"Project ID": "TN107", "Country": "UAE", "Industry": "Retail", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-02-15", "End Date": "2024-09-30", "Value": 10762388},
+                    {"Project ID": "TN128", "Country": "India", "Industry": "Real Estate", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "In Progress", "Start Date": "2023-04-14", "End Date": "2023-12-14", "Value": 10762388},
+                    {"Project ID": "TN131", "Country": "Japan", "Industry": "Healthcare", "Project Name": "Software Development Project", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2024-07-18", "End Date": "2024-12-30", "Value": 10762388},
+                    {"Project ID": "TN146", "Country": "Singapore", "Industry": "Banking", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "In Progress", "Start Date": "2023-07-06", "End Date": "2024-03-29", "Value": 10762388},
+                    {"Project ID": "TN152", "Country": "India", "Industry": "Real Estate", "Project Name": "AI & ML Solutions Project", "Service Type": "AI & ML Solutions", "Status": "In Progress", "Start Date": "2025-05-06", "End Date": "2025-09-21", "Value": 10762388},
+                    {"Project ID": "TN155", "Country": "UAE", "Industry": "Retail", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-03-01", "End Date": "2024-07-19", "Value": 10762388},
+                    {"Project ID": "TN156", "Country": "UAE", "Industry": "Healthcare", "Project Name": "Cloud Solutions Project", "Service Type": "Cloud Solutions", "Status": "In Progress", "Start Date": "2025-04-19", "End Date": "2025-08-17", "Value": 10762385}
+                ]
+            },
+            "CloudPoint Inc.": {
+                "total_value": 34858099, "avg_team": 12.5, "avg_rating": 4.35,
+                "projects": [
+                    {"Project ID": "TN110", "Country": "UAE", "Industry": "Aerospace", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2023-08-09", "End Date": "2024-04-21", "Value": 8714525},
+                    {"Project ID": "TN125", "Country": "Singapore", "Industry": "Food & Beverages", "Project Name": "Cloud Solutions Project", "Service Type": "Cloud Solutions", "Status": "Completed", "Start Date": "2023-04-26", "End Date": "2023-09-03", "Value": 8714525},
+                    {"Project ID": "TN138", "Country": "Japan", "Industry": "Banking", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "Completed", "Start Date": "2025-04-20", "End Date": "2025-07-24", "Value": 8714525},
+                    {"Project ID": "TN144", "Country": "Japan", "Industry": "Retail", "Project Name": "Software Development Project", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2025-06-24", "End Date": "2026-05-17", "Value": 8714524}
+                ]
+            },
+            "CyberGuard Tech": {
+                "total_value": 44986888, "avg_team": 13.0, "avg_rating": 4.72,
+                "projects": [
+                    {"Project ID": "TN102", "Country": "Australia", "Industry": "Logistics", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-05-12", "End Date": "2024-10-30", "Value": 11246722},
+                    {"Project ID": "TN103", "Country": "India", "Industry": "Retail", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2025-04-07", "End Date": "2026-02-18", "Value": 11246722},
+                    {"Project ID": "TN133", "Country": "Singapore", "Industry": "Real Estate", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "In Progress", "Start Date": "2023-07-22", "End Date": "2024-04-23", "Value": 11246722},
+                    {"Project ID": "TN140", "Country": "Japan", "Industry": "Food & Beverages", "Project Name": "AI & ML Solutions Project", "Service Type": "AI & ML Solutions", "Status": "In Progress", "Start Date": "2025-05-07", "End Date": "2026-03-25", "Value": 11246722}
+                ]
+            },
+            "EduWorld Online": {
+                "total_value": 5985813, "avg_team": 8.0, "avg_rating": 4.1,
+                "projects": [
+                    {"Project ID": "TN134", "Country": "UK", "Industry": "Insurance", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "Completed", "Start Date": "2023-08-17", "End Date": "2024-04-13", "Value": 5985813}
+                ]
+            },
+            "FinEdge Analytics": {
+                "total_value": 57490278, "avg_team": 11.0, "avg_rating": 4.54,
+                "projects": [
+                    {"Project ID": "TN104", "Country": "India", "Industry": "Education", "Project Name": "Mobile App Development Project", "Service Type": "Mobile App Development", "Status": "In Progress", "Start Date": "2024-03-17", "End Date": "2024-08-17", "Value": 11498056},
+                    {"Project ID": "TN112", "Country": "Australia", "Industry": "Retail", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2025-02-07", "End Date": "2025-06-16", "Value": 11498056},
+                    {"Project ID": "TN122", "Country": "Japan", "Industry": "Retail", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-05-03", "End Date": "2025-01-09", "Value": 11498056},
+                    {"Project ID": "TN126", "Country": "Japan", "Industry": "Aerospace", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2024-07-07", "End Date": "2025-02-21", "Value": 11498056},
+                    {"Project ID": "TN150", "Country": "Australia", "Industry": "Energy", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2024-03-09", "End Date": "2024-07-24", "Value": 11498054}
+                ]
+            },
+            "FinSmart Bank": {
+                "total_value": 13152230, "avg_team": 15.0, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN124", "Country": "Singapore", "Industry": "Aerospace", "Project Name": "Mobile App Development Project", "Service Type": "Mobile App Development", "Status": "Completed", "Start Date": "2024-06-22", "End Date": "2024-11-11", "Value": 13152230}
+                ]
+            },
+            "GlobalMart Corp.": {
+                "total_value": 16448645, "avg_team": 7.0, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN148", "Country": "India", "Industry": "Banking", "Project Name": "Software Development Project", "Service Type": "Software Development", "Status": "Completed", "Start Date": "2023-11-14", "End Date": "2024-10-15", "Value": 8224323},
+                    {"Project ID": "TN159", "Country": "Singapore", "Industry": "Healthcare", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "In Progress", "Start Date": "2024-09-06", "End Date": "2025-03-08", "Value": 8224322}
+                ]
+            },
+            "GreenCity Developers": {
+                "total_value": 23435653, "avg_team": 17.5, "avg_rating": 4.2,
+                "projects": [
+                    {"Project ID": "TN111", "Country": "Germany", "Industry": "Education", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2025-02-15", "End Date": "2025-08-27", "Value": 11717827},
+                    {"Project ID": "TN149", "Country": "USA", "Industry": "Aerospace", "Project Name": "Web & Mobile Solutions Project", "Service Type": "Web & Mobile Solutions", "Status": "In Progress", "Start Date": "2023-06-03", "End Date": "2024-01-12", "Value": 11717826}
+                ]
+            },
+            "HealthNet Global": {
+                "total_value": 31708992, "avg_team": 11.33, "avg_rating": 4.33,
+                "projects": [
+                    {"Project ID": "TN108", "Country": "Germany", "Industry": "Education", "Project Name": "Business Intelligence Project", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2023-07-24", "End Date": "2024-01-25", "Value": 10569664},
+                    {"Project ID": "TN118", "Country": "Australia", "Industry": "Banking", "Project Name": "IoT & Data Analytics Project", "Service Type": "IoT & Data Analytics", "Status": "In Progress", "Start Date": "2023-02-22", "End Date": "2023-12-24", "Value": 10569664},
+                    {"Project ID": "TN153", "Country": "USA", "Industry": "Healthcare", "Project Name": "Web & Mobile Solutions Project", "Service Type": "Web & Mobile Solutions", "Status": "In Progress", "Start Date": "2024-01-13", "End Date": "2024-06-04", "Value": 10569664}
+                ]
+            },
+            "MediCare Plus": {
+                "total_value": 29210006, "avg_team": 17.0, "avg_rating": 4.63,
+                "projects": [
+                    {"Project ID": "TN114", "Country": "UAE", "Industry": "Food & Beverages", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2023-03-31", "End Date": "2023-09-01", "Value": 9736669},
+                    {"Project ID": "TN120", "Country": "Japan", "Industry": "Education", "Project Name": "AI & ML Solutions Project", "Service Type": "AI & ML Solutions", "Status": "Completed", "Start Date": "2024-03-29", "End Date": "2024-10-10", "Value": 9736669},
+                    {"Project ID": "TN141", "Country": "France", "Industry": "Healthcare", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "In Progress", "Start Date": "2025-04-30", "End Date": "2026-03-10", "Value": 9736668}
+                ]
+            },
+            "MediLink Health": {
+                "total_value": 26594246, "avg_team": 6.5, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN139", "Country": "Japan", "Industry": "Banking", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "Completed", "Start Date": "2024-04-21", "End Date": "2024-12-12", "Value": 13297123},
+                    {"Project ID": "TN151", "Country": "Japan", "Industry": "Aerospace", "Project Name": "IoT & Data Analytics Project", "Service Type": "IoT & Data Analytics", "Status": "In Progress", "Start Date": "2024-09-07", "End Date": "2025-03-26", "Value": 13297123}
+                ]
+            },
+            "NextGen Systems": {
+                "total_value": 43014477, "avg_team": 12.0, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN127", "Country": "India", "Industry": "Healthcare", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2023-08-08", "End Date": "2024-03-25", "Value": 14338159},
+                    {"Project ID": "TN132", "Country": "USA", "Industry": "Insurance", "Project Name": "Cloud Solutions Project", "Service Type": "Cloud Solutions", "Status": "In Progress", "Start Date": "2023-03-04", "End Date": "2023-11-12", "Value": 14338159},
+                    {"Project ID": "TN145", "Country": "UAE", "Industry": "Energy", "Project Name": "IoT & Cloud Integration Project", "Service Type": "IoT & Cloud Integration", "Status": "In Progress", "Start Date": "2024-01-09", "End Date": "2024-05-23", "Value": 14338159}
+                ]
+            },
+            "OceanLink Logistics": {
+                "total_value": 16175588, "avg_team": 18.5, "avg_rating": 4.85,
+                "projects": [
+                    {"Project ID": "TN106", "Country": "France", "Industry": "Insurance", "Project Name": "IoT & Data Analytics Project", "Service Type": "IoT & Data Analytics", "Status": "In Progress", "Start Date": "2024-05-24", "End Date": "2025-04-01", "Value": 8087794},
+                    {"Project ID": "TN135", "Country": "Germany", "Industry": "Food & Beverages", "Project Name": "Cloud Solutions Project", "Service Type": "Cloud Solutions", "Status": "Completed", "Start Date": "2023-09-18", "End Date": "2024-08-02", "Value": 8087794}
+                ]
+            },
+            "SkyBridge IT": {
+                "total_value": 36493330, "avg_team": 10.5, "avg_rating": 4.65,
+                "projects": [
+                    {"Project ID": "TN101", "Country": "Singapore", "Industry": "Aerospace", "Project Name": "Mobile App Development Project", "Service Type": "Mobile App Development", "Status": "Completed", "Start Date": "2024-01-27", "End Date": "2024-10-06", "Value": 9123333},
+                    {"Project ID": "TN136", "Country": "India", "Industry": "Retail", "Project Name": "Mobile App Development Project", "Service Type": "Mobile App Development", "Status": "In Progress", "Start Date": "2023-04-22", "End Date": "2024-02-09", "Value": 9123333},
+                    {"Project ID": "TN143", "Country": "Australia", "Industry": "Healthcare", "Project Name": "AI & ML Solutions Project", "Service Type": "AI & ML Solutions", "Status": "In Progress", "Start Date": "2025-05-24", "End Date": "2025-09-05", "Value": 9123333},
+                    {"Project ID": "TN147", "Country": "India", "Industry": "Healthcare", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "Completed", "Start Date": "2025-02-06", "End Date": "2025-05-10", "Value": 9123331}
+                ]
+            },
+            "SmartBuild Infra": {
+                "total_value": 68723486, "avg_team": 13.57, "avg_rating": 4.76,
+                "projects": [
+                    {"Project ID": "TN109", "Country": "Australia", "Industry": "Insurance", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2025-01-24", "End Date": "2025-12-17", "Value": 9817641},
+                    {"Project ID": "TN117", "Country": "UAE", "Industry": "Education", "Project Name": "IoT & Data Analytics Project", "Service Type": "IoT & Data Analytics", "Status": "Completed", "Start Date": "2024-02-26", "End Date": "2024-12-23", "Value": 9817641},
+                    {"Project ID": "TN119", "Country": "India", "Industry": "Food & Beverages", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2023-09-08", "End Date": "2024-09-02", "Value": 9817641},
+                    {"Project ID": "TN129", "Country": "India", "Industry": "Healthcare", "Project Name": "Web & Mobile Solutions Project", "Service Type": "Web & Mobile Solutions", "Status": "Completed", "Start Date": "2024-06-24", "End Date": "2025-02-09", "Value": 9817641},
+                    {"Project ID": "TN137", "Country": "France", "Industry": "Insurance", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "In Progress", "Start Date": "2024-06-26", "End Date": "2025-05-27", "Value": 9817641},
+                    {"Project ID": "TN154", "Country": "Australia", "Industry": "Education", "Project Name": "Web & Mobile Solutions Project", "Service Type": "Web & Mobile Solutions", "Status": "Completed", "Start Date": "2024-10-14", "End Date": "2025-02-05", "Value": 9817641},
+                    {"Project ID": "TN160", "Country": "UAE", "Industry": "Aerospace", "Project Name": "Web Development Project", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2024-09-09", "End Date": "2025-08-30", "Value": 9817641}
+                ]
+            },
+            "UrbanGrid Energy": {
+                "total_value": 42951172, "avg_team": 10.25, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN113", "Country": "Canada", "Industry": "Aerospace", "Project Name": "Software Development Project", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2023-11-25", "End Date": "2024-08-06", "Value": 10737793},
+                    {"Project ID": "TN115", "Country": "UK", "Industry": "Education", "Project Name": "IoT & Data Analytics Project", "Service Type": "IoT & Data Analytics", "Status": "Completed", "Start Date": "2023-05-03", "End Date": "2023-12-27", "Value": 10737793},
+                    {"Project ID": "TN142", "Country": "France", "Industry": "Logistics", "Project Name": "SaaS Development Project", "Service Type": "SaaS Development", "Status": "In Progress", "Start Date": "2025-04-16", "End Date": "2025-08-10", "Value": 10737793},
+                    {"Project ID": "TN158", "Country": "Germany", "Industry": "Insurance", "Project Name": "Cloud Solutions Project", "Service Type": "Cloud Solutions", "Status": "Completed", "Start Date": "2023-06-24", "End Date": "2023-12-19", "Value": 10737793}
+                ]
+            },
+            "TechTrend Solutions": {
+                "total_value": 48234567, "avg_team": 12.3, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN161", "Country": "USA", "Industry": "Technology", "Project Name": "AI Analytics Platform", "Service Type": "AI & ML Solutions", "Status": "In Progress", "Start Date": "2024-02-10", "End Date": "2024-09-15", "Value": 48234567}
+                ]
+            },
+            "BlueWave Enterprises": {
+                "total_value": 29876543, "avg_team": 9.5, "avg_rating": 4.3,
+                "projects": [
+                    {"Project ID": "TN162", "Country": "UK", "Industry": "Retail", "Project Name": "E-commerce Platform", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2023-05-12", "End Date": "2024-01-20", "Value": 29876543}
+                ]
+            },
+            "Starlight Systems": {
+                "total_value": 37451234, "avg_team": 14.0, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN163", "Country": "Germany", "Industry": "Healthcare", "Project Name": "Patient Portal", "Service Type": "Web & Mobile Solutions", "Status": "In Progress", "Start Date": "2024-03-15", "End Date": "2024-12-10", "Value": 37451234}
+                ]
+            },
+            "NovaTech Corp": {
+                "total_value": 64532187, "avg_team": 11.8, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN164", "Country": "Canada", "Industry": "Banking", "Project Name": "Fraud Detection System", "Service Type": "AI & ML Solutions", "Status": "Completed", "Start Date": "2023-07-01", "End Date": "2024-03-10", "Value": 64532187}
+                ]
+            },
+            "GreenTech Innovations": {
+                "total_value": 51234678, "avg_team": 10.2, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN165", "Country": "Australia", "Industry": "Energy", "Project Name": "Smart Grid Solution", "Service Type": "IoT & Cloud Integration", "Status": "In Progress", "Start Date": "2024-01-20", "End Date": "2024-11-30", "Value": 51234678}
+                ]
+            },
+            "DataFlow Analytics": {
+                "total_value": 38765432, "avg_team": 13.5, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN166", "Country": "Japan", "Industry": "Retail", "Project Name": "Customer Insights Dashboard", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2023-09-10", "End Date": "2024-05-15", "Value": 38765432}
+                ]
+            },
+            "SkyNet Solutions": {
+                "total_value": 47654321, "avg_team": 12.0, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN167", "Country": "Singapore", "Industry": "Logistics", "Project Name": "Supply Chain Platform", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2024-04-05", "End Date": "2025-01-10", "Value": 47654321}
+                ]
+            },
+            "CloudPeak Technologies": {
+                "total_value": 35421678, "avg_team": 10.8, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN168", "Country": "France", "Industry": "Insurance", "Project Name": "Claims Processing System", "Service Type": "SaaS Development", "Status": "Completed", "Start Date": "2023-06-15", "End Date": "2024-02-20", "Value": 35421678}
+                ]
+            },
+            "BrightPath Inc": {
+                "total_value": 43218765, "avg_team": 11.5, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN169", "Country": "UAE", "Industry": "Real Estate", "Project Name": "Property Management App", "Service Type": "Mobile App Development", "Status": "In Progress", "Start Date": "2024-02-25", "End Date": "2024-10-30", "Value": 43218765}
+                ]
+            },
+            "Quantum Dynamics": {
+                "total_value": 59843210, "avg_team": 13.0, "avg_rating": 4.9,
+                "projects": [
+                    {"Project ID": "TN170", "Country": "India", "Industry": "Technology", "Project Name": "Quantum Computing Platform", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2024-05-10", "End Date": "2025-03-15", "Value": 59843210}
+                ]
+            },
+            "EcoEnergy Solutions": {
+                "total_value": 28765432, "avg_team": 9.7, "avg_rating": 4.3,
+                "projects": [
+                    {"Project ID": "TN171", "Country": "USA", "Industry": "Energy", "Project Name": "Renewable Energy Dashboard", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2023-08-20", "End Date": "2024-04-25", "Value": 28765432}
+                ]
+            },
+            "HealthSync Systems": {
+                "total_value": 41236578, "avg_team": 12.2, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN172", "Country": "Germany", "Industry": "Healthcare", "Project Name": "Telemedicine Platform", "Service Type": "Web & Mobile Solutions", "Status": "In Progress", "Start Date": "2024-03-01", "End Date": "2024-11-10", "Value": 41236578}
+                ]
+            },
+            "SmartRetail Corp": {
+                "total_value": 37654321, "avg_team": 10.5, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN173", "Country": "UK", "Industry": "Retail", "Project Name": "Inventory Management System", "Service Type": "Software Development", "Status": "Completed", "Start Date": "2023-10-15", "End Date": "2024-06-20", "Value": 37654321}
+                ]
+            },
+            "GlobalTech Innovations": {
+                "total_value": 52134678, "avg_team": 11.8, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN174", "Country": "Canada", "Industry": "Technology", "Project Name": "Cloud Migration Project", "Service Type": "Cloud Solutions", "Status": "In Progress", "Start Date": "2024-01-15", "End Date": "2024-09-20", "Value": 52134678}
+                ]
+            },
+            "BlueSky Analytics": {
+                "total_value": 39876543, "avg_team": 12.0, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN175", "Country": "Australia", "Industry": "Banking", "Project Name": "Risk Analysis Platform", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2023-07-10", "End Date": "2024-03-15", "Value": 39876543}
+                ]
+            },
+            "TechNova Enterprises": {
+                "total_value": 46754321, "avg_team": 13.5, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN176", "Country": "Japan", "Industry": "Logistics", "Project Name": "Logistics Optimization Tool", "Service Type": "AI & ML Solutions", "Status": "In Progress", "Start Date": "2024-04-20", "End Date": "2025-01-25", "Value": 46754321}
+                ]
+            },
+            "BrightStar Solutions": {
+                "total_value": 34521678, "avg_team": 10.3, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN177", "Country": "Singapore", "Industry": "Education", "Project Name": "Learning Management System", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2023-09-05", "End Date": "2024-05-10", "Value": 34521678}
+                ]
+            },
+            "CloudWave Technologies": {
+                "total_value": 41236578, "avg_team": 11.7, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN178", "Country": "France", "Industry": "Insurance", "Project Name": "Policy Management System", "Service Type": "SaaS Development", "Status": "In Progress", "Start Date": "2024-02-15", "End Date": "2024-10-20", "Value": 41236578}
+                ]
+            },
+            "SmartGrid Systems": {
+                "total_value": 58765432, "avg_team": 12.8, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN179", "Country": "UAE", "Industry": "Energy", "Project Name": "Energy Monitoring Platform", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2023-06-20", "End Date": "2024-02-25", "Value": 58765432}
+                ]
+            },
+            "DataSync Corp": {
+                "total_value": 37654321, "avg_team": 10.5, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN180", "Country": "India", "Industry": "Retail", "Project Name": "Sales Analytics Dashboard", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-03-10", "End Date": "2024-11-15", "Value": 37654321}
+                ]
+            },
+            "TechBridge Solutions": {
+                "total_value": 43218765, "avg_team": 11.2, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN181", "Country": "USA", "Industry": "Technology", "Project Name": "API Integration Platform", "Service Type": "Software Development", "Status": "Completed", "Start Date": "2023-08-15", "End Date": "2024-04-20", "Value": 43218765}
+                ]
+            },
+            "GreenWave Enterprises": {
+                "total_value": 59843210, "avg_team": 13.0, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN182", "Country": "Germany", "Industry": "Energy", "Project Name": "Solar Energy System", "Service Type": "IoT & Cloud Integration", "Status": "In Progress", "Start Date": "2024-05-15", "End Date": "2025-02-20", "Value": 59843210}
+                ]
+            },
+            "HealthTech Innovations": {
+                "total_value": 28765432, "avg_team": 9.8, "avg_rating": 4.3,
+                "projects": [
+                    {"Project ID": "TN183", "Country": "UK", "Industry": "Healthcare", "Project Name": "Health Monitoring App", "Service Type": "Mobile App Development", "Status": "Completed", "Start Date": "2023-10-10", "End Date": "2024-06-15", "Value": 28765432}
+                ]
+            },
+            "SmartPath Solutions": {
+                "total_value": 41236578, "avg_team": 12.5, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN184", "Country": "Canada", "Industry": "Education", "Project Name": "Online Learning Platform", "Service Type": "Web Development", "Status": "In Progress", "Start Date": "2024-02-20", "End Date": "2024-10-25", "Value": 41236578}
+                ]
+            },
+            "BlueTech Corp": {
+                "total_value": 37654321, "avg_team": 11.0, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN185", "Country": "Australia", "Industry": "Banking", "Project Name": "Mobile Banking App", "Service Type": "Mobile App Development", "Status": "Completed", "Start Date": "2023-07-20", "End Date": "2024-03-25", "Value": 37654321}
+                ]
+            },
+            "NovaWave Systems": {
+                "total_value": 52134678, "avg_team": 12.3, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN186", "Country": "Japan", "Industry": "Logistics", "Project Name": "Fleet Management System", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2024-04-10", "End Date": "2025-01-15", "Value": 52134678}
+                ]
+            },
+            "BrightGrid Technologies": {
+                "total_value": 39876543, "avg_team": 10.7, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN187", "Country": "Singapore", "Industry": "Energy", "Project Name": "Smart Metering Solution", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2023-09-15", "End Date": "2024-05-20", "Value": 39876543}
+                ]
+            },
+            "CloudSync Enterprises": {
+                "total_value": 46754321, "avg_team": 11.5, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN188", "Country": "France", "Industry": "Insurance", "Project Name": "Risk Management Platform", "Service Type": "SaaS Development", "Status": "In Progress", "Start Date": "2024-03-05", "End Date": "2024-11-10", "Value": 46754321}
+                ]
+            },
+            "TechStar Innovations": {
+                "total_value": 34521678, "avg_team": 12.0, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN189", "Country": "UAE", "Industry": "Retail", "Project Name": "Customer Loyalty App", "Service Type": "Mobile App Development", "Status": "Completed", "Start Date": "2023-06-20", "End Date": "2024-02-25", "Value": 34521678}
+                ]
+            },
+            "DataWave Solutions": {
+                "total_value": 41236578, "avg_team": 10.8, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN190", "Country": "India", "Industry": "Technology", "Project Name": "Data Processing Platform", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-02-15", "End Date": "2024-10-20", "Value": 41236578}
+                ]
+            },
+            "GreenSync Technologies": {
+                "total_value": 58765432, "avg_team": 13.2, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN191", "Country": "USA", "Industry": "Energy", "Project Name": "Wind Energy System", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2023-08-10", "End Date": "2024-04-15", "Value": 58765432}
+                ]
+            },
+            "HealthPath Systems": {
+                "total_value": 37654321, "avg_team": 11.0, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN192", "Country": "Germany", "Industry": "Healthcare", "Project Name": "Medical Records System", "Service Type": "Web & Mobile Solutions", "Status": "In Progress", "Start Date": "2024-03-20", "End Date": "2024-11-25", "Value": 37654321}
+                ]
+            },
+            "SmartTech Corp": {
+                "total_value": 58765432, "avg_team": 12.8, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN193", "Country": "UK", "Industry": "Retail", "Project Name": "Retail Analytics Dashboard", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2023-10-10", "End Date": "2024-06-15", "Value": 58765432}
+                ]
+            },
+            "GlobalSync Innovations": {
+                "total_value": 37654321, "avg_team": 10.5, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN194", "Country": "Canada", "Industry": "Technology", "Project Name": "Enterprise Software Solution", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2024-02-10", "End Date": "2024-10-15", "Value": 37654321}
+                ]
+            },
+            "BluePath Analytics": {
+                "total_value": 43218765, "avg_team": 11.2, "avg_rating": 4.5,
+                "projects": [
+                    {"Project ID": "TN195", "Country": "Australia", "Industry": "Banking", "Project Name": "Transaction Monitoring System", "Service Type": "Business Intelligence", "Status": "Completed", "Start Date": "2023-07-20", "End Date": "2024-03-25", "Value": 43218765}
+                ]
+            },
+            "TechSync Enterprises": {
+                "total_value": 59843210, "avg_team": 12.0, "avg_rating": 4.7,
+                "projects": [
+                    {"Project ID": "TN196", "Country": "Japan", "Industry": "Logistics", "Project Name": "Warehouse Management System", "Service Type": "Software Development", "Status": "In Progress", "Start Date": "2024-04-15", "End Date": "2025-01-20", "Value": 59843210}
+                ]
+            },
+            "BrightWave Technologies": {
+                "total_value": 28765432, "avg_team": 10.8, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN197", "Country": "Singapore", "Industry": "Education", "Project Name": "Student Portal", "Service Type": "Web Development", "Status": "Completed", "Start Date": "2023-09-05", "End Date": "2024-05-10", "Value": 28765432}
+                ]
+            },
+            "CloudGrid Solutions": {
+                "total_value": 41236578, "avg_team": 11.5, "avg_rating": 4.4,
+                "projects": [
+                    {"Project ID": "TN198", "Country": "France", "Industry": "Insurance", "Project Name": "Underwriting System", "Service Type": "SaaS Development", "Status": "In Progress", "Start Date": "2024-03-10", "End Date": "2024-11-15", "Value": 41236578}
+                ]
+            },
+            "SmartPath Technologies": {
+                "total_value": 37654321, "avg_team": 12.3, "avg_rating": 4.8,
+                "projects": [
+                    {"Project ID": "TN199", "Country": "UAE", "Industry": "Energy", "Project Name": "Energy Management System", "Service Type": "IoT & Cloud Integration", "Status": "Completed", "Start Date": "2023-06-20", "End Date": "2024-02-25", "Value": 37654321}
+                ]
+            },
+            "DataGrid Corp": {
+                "total_value": 52134678, "avg_team": 10.7, "avg_rating": 4.6,
+                "projects": [
+                    {"Project ID": "TN200", "Country": "India", "Industry": "Retail", "Project Name": "Retail Data Platform", "Service Type": "Business Intelligence", "Status": "In Progress", "Start Date": "2024-02-15", "End Date": "2024-10-20", "Value": 52134678}
+                ]
+            }
+        };
+        const clients = [
+            "AeroTech Innovations", "AgroFresh Foods", "BrightFuture AI", "CloudPoint Inc.", "CyberGuard Tech",
+            "EduWorld Online", "FinEdge Analytics", "FinSmart Bank", "GlobalMart Corp.", "GreenCity Developers",
+            "HealthNet Global", "MediCare Plus", "MediLink Health", "NextGen Systems", "OceanLink Logistics",
+            "SkyBridge IT", "SmartBuild Infra", "UrbanGrid Energy", "TechTrend Solutions", "BlueWave Enterprises",
+            "Starlight Systems", "NovaTech Corp", "GreenTech Innovations", "DataFlow Analytics", "SkyNet Solutions",
+            "CloudPeak Technologies", "BrightPath Inc", "Quantum Dynamics", "EcoEnergy Solutions", "HealthSync Systems",
+            "SmartRetail Corp", "GlobalTech Innovations", "BlueSky Analytics", "TechNova Enterprises", "BrightStar Solutions",
+            "CloudWave Technologies", "SmartGrid Systems", "DataSync Corp", "TechBridge Solutions", "GreenWave Enterprises",
+            "HealthTech Innovations", "SmartPath Solutions", "BlueTech Corp", "NovaWave Systems", "BrightGrid Technologies",
+            "CloudSync Enterprises", "TechStar Innovations", "DataWave Solutions", "GreenSync Technologies", "HealthPath Systems",
+            "SmartTech Corp", "GlobalSync Innovations", "BluePath Analytics", "TechSync Enterprises", "BrightWave Technologies",
+            "CloudGrid Solutions", "SmartPath Technologies", "DataGrid Corp"
+        ];
+        let chart;
+        let displayedClients = clients.slice(0, 60); // Default to all 60 companies
+
+        function initializeChart() {
+            const ctx = document.getElementById('myChart').getContext('2d');
+            chart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: displayedClients,
+                    datasets: [{
+                        label: 'Project Value (Sum in ₹)',
+                        data: displayedClients.map(c => clientData[c].total_value),
+                        backgroundColor: displayedClients.map(() => 'rgba(75, 192, 192, 0.2)'),
+                        borderColor: displayedClients.map(() => 'rgba(75, 192, 192, 1)'),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: { beginAtZero: true },
+                        x: { ticks: { autoSkip: false, maxRotation: 45, minRotation: 45 } }
+                    },
+                    plugins: {
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                title: function(tooltipItems) {
+                                    return tooltipItems[0].label;
+                                },
+                                label: function() {
+                                    return '';
+                                },
+                                afterBody: function(tooltipItems) {
+                                    const client = tooltipItems[0].label;
+                                    const projects = clientData[client].projects;
+                                    let lines = [];
+                                    projects.forEach(p => {
+                                        lines.push(`Project ID: ${p['Project ID']}`);
+                                        lines.push(`Country: ${p['Country']}`);
+                                        lines.push(`Industry: ${p['Industry']}`);
+                                        lines.push(`Project Name: ${p['Project Name']}`);
+                                        lines.push(`Service Type: ${p['Service Type']}`);
+                                        lines.push(`Status: ${p['Status']}`);
+                                        lines.push(`Start Date: ${p['Start Date']}`);
+                                        lines.push(`End Date: ${p['End Date']}`);
+                                        lines.push(`Value: ₹${p['Value'].toLocaleString('en-IN')}`);
+                                        lines.push('-------------------');
+                                    });
+                                    return lines;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+            updateChartWidth();
+        }
+
+        function updateChartWidth() {
+            const numCompanies = displayedClients.length;
+            const canvas = document.getElementById('myChart');
+            canvas.style.minWidth = `${numCompanies * 60}px`; // 60px per bar for 60 companies
+        }
+
+        function searchClient() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            const backgroundColors = displayedClients.map(c => 'rgba(75, 192, 192, 0.2)');
+            const borderColors = displayedClients.map(c => 'rgba(75, 192, 192, 1)');
+
+            if (searchTerm) {
+                const matchedClient = displayedClients.find(c => c.toLowerCase().includes(searchTerm));
+                if (matchedClient) {
+                    const index = displayedClients.indexOf(matchedClient);
+                    backgroundColors[index] = 'rgba(255, 99, 132, 0.5)'; // Highlight with red
+                    borderColors[index] = 'rgba(255, 99, 132, 1)';
+                }
+            }
+
+            chart.data.datasets[0].backgroundColor = backgroundColors;
+            chart.data.datasets[0].borderColor = borderColors;
+            chart.update();
+        }
+
+        document.getElementById('metric').addEventListener('change', function() {
+            const metric = this.value;
+            const data = displayedClients.map(c => clientData[c][metric]);
+            let label = '';
+            if (metric === 'total_value') label = 'Project Value (Sum in ₹)';
+            else if (metric === 'avg_team') label = 'Average Team Size';
+            else if (metric === 'avg_rating') label = 'Average Client Rating';
+            chart.data.datasets[0].data = data;
+            chart.data.datasets[0].label = label;
+            searchClient(); // Reapply highlight after metric change
+            chart.update();
+        });
+
+        document.getElementById('numCompanies').addEventListener('change', function() {
+            const num = Math.min(parseInt(this.value), clients.length); // Cap at total clients
+            displayedClients = clients.slice(0, num);
+            chart.data.labels = displayedClients;
+            chart.data.datasets[0].data = displayedClients.map(c => clientData[c][metric || 'total_value']);
+            chart.data.datasets[0].backgroundColor = displayedClients.map(() => 'rgba(75, 192, 192, 0.2)');
+            chart.data.datasets[0].borderColor = displayedClients.map(() => 'rgba(75, 192, 192, 1)');
+            updateChartWidth();
+            searchClient(); // Reapply highlight after changing number of companies
+            chart.update();
+        });
+
+        initializeChart();
+    </script>
+</body>
+</html>

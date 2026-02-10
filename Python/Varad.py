@@ -1,1 +1,0 @@
-print("Varad is chootiya")
